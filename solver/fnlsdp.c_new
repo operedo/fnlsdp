@@ -1,0 +1,160 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+//#include "declarations.h"
+#include "fnlsdp.h"
+
+int main(int argc, char *argv[]){
+	int id, np;
+	/* dirs, files, tags ...*/
+	const char* dir="../data/compleib_data/";
+	const char* dirinit="../data/initial_points/";
+	const char* code="REA1";
+	const char* tag="01";
+	/* compleib data matrices */
+	genmatrix A, B1, B,C1, C,D11,D12,D21;
+	/* compleib initial point */
+	genmatrix F0, Q0, V0;
+	/* compleib matrix dimensions*/
+	int nx,nw,nu,nz,ny;	
+	int n,k,ret;
+	double rho=10.0;
+	/* auxiliar matrices */
+	genmatrix AF, CF, OUT, MF1, MF2;
+	struct blockmatrix diagMF1, diagMF2;
+	/* sdp problem data */
+	struct blockmatrix Csdp;
+  	double *asdp;
+  	struct constraintmatrix *constraintssdp;
+  	/* sdp variables */
+	struct blockmatrix X,Z;
+  	double *y;
+	/* sdp value of objectives functions */
+  	double pobj,dobj;
+	genmatrix *null=NULL;
+	 /* Initialize the process grid */
+  	struct scalapackpar scapack;
+  	struct paramstruc params;
+  	int printlevel;
+	MPI_Init(&argc,&argv);
+  	MPI_Comm_rank (MPI_COMM_WORLD,&id);
+  	MPI_Comm_size (MPI_COMM_WORLD,&np);
+	scapack.id = id;
+  	scapack.np = np;
+
+  	switch (scapack.np)
+        {
+        	case 1: scapack.nprow=1; scapack.npcol=1;
+          		break;
+        	case 2: scapack.nprow=2; scapack.npcol=1;
+          		break;
+        	case 4: scapack.nprow=2; scapack.npcol=2;
+          		break;
+        	case 8: scapack.nprow=4; scapack.npcol=2;
+          		break;
+        	case 16: scapack.nprow=4; scapack.npcol=4;
+          		break;
+        	case 32: scapack.nprow=8; scapack.npcol=4;
+          		break;
+        	case 64: scapack.nprow=8; scapack.npcol=8;
+          		break;
+        	default:
+          		if (scapack.id==0)
+              			printf("Can not setup %d processors to a grid.\nPlease use 1,2,4,8,9,16,32 or 64 nodes to run or modify fnlsdp.c file. \n",scapack.np);
+          		MPI_Finalize();
+          		return(1);
+	};
+
+   	sl_init_(&scapack.ic,&scapack.nprow,&scapack.npcol);
+   	Cblacs_gridinfo(scapack.ic,&scapack.nprow,&scapack.npcol,&scapack.myrow,&scapack.mycol);
+
+	/*load compleib data*/
+	load_compleib(code, dir, &A, &B1, &B, &C1, &C, &D11, &D12, &D21, &nx, &nw, &nu, &nz, &ny);
+	load_initial_point(code,tag,dirinit,&F0,&Q0,&V0,nx,nu,ny);
+	
+	if(DEBUG_FNLSDP){printf("A:\n");
+	print_genmatrix(&A);}
+	if(DEBUG_FNLSDP){printf("F0:\n");
+	print_genmatrix(&F0);}
+	
+	/*build sdp in csdp format from linearized nlsdp in compleib format*/
+	build_aux_mats1(&A,&AF,-1,-1);
+	build_aux_mats1(&C1,&CF,-1,-1);
+	build_aux_mats2(&OUT,F0.nrows,C1.ncols);
+	double scale1=1.0;
+	double scale2=0.0;
+	mat_mult_raw_gen1(scale1,scale2,&F0,&C,&OUT);
+	if(DEBUG_FNLSDP){
+		printf("OUT:\n");
+		print_genmatrix(&OUT);	
+	}
+	scale2=1.0;
+	mat_mult_raw_gen1(scale1,scale2,&B,&OUT,&AF);
+	if(DEBUG_FNLSDP){
+		printf("AF:\n");
+		print_genmatrix(&AF);	
+	}
+
+	if(DEBUG_FNLSDP){
+	printf("D12:\n");
+	print_genmatrix(&D12);
+	printf("OUT:\n");
+	print_genmatrix(&OUT);
+	printf("CF:\n");
+	print_genmatrix(&CF);
+	}
+
+	scale2=1.0;
+	mat_mult_raw_gen1(scale1,scale2,&D12,&OUT,&CF);
+	if(DEBUG_FNLSDP){
+		printf("CF:\n");
+		print_genmatrix(&CF);	
+	}
+
+	printf("build_C:\n");
+	build_C(&Csdp, nx, ny, nu, &Q0, &V0, &B1, &AF,rho);
+	printf("print C:");
+	print_blockmatrix(&Csdp);
+
+	printf("pasoooo????\n");
+
+	build_constraints(&constraintssdp, nx, ny, nz, nu, &Q0, &V0, &B, &C, &D12, &AF, &CF);
+	printf("build constraints:\n");
+	print_constraintmatrix(nx,ny,nu,constraintssdp);
+
+
+	build_a(&asdp,nx,ny,nu);
+	print_a(nx,ny,nu,asdp);
+	
+	n=2*(nu*ny+2*nx*nx+1)+4*nx*nx+nx;
+	k=nu*ny+2*nx*nx+1;
+   	
+	initparams(&params,&printlevel);
+      	initsoln(n,k,Csdp,asdp,constraintssdp,&X,&y,&Z,&params.rank1);
+  	
+	write_prob("prob.dat-s",n,k,Csdp,asdp,constraintssdp);
+	//ret=easy_sdp(n,k,Csdp,asdp,constraintssdp,0.0,&X,&y,&Z,&pobj,&dobj,scapack,params,printlevel);
+	//printf("return code: %d\n",ret);
+
+	free(asdp);
+	free_mat(Csdp);
+	free_constraints(nx,ny,nu,constraintssdp);
+
+	free(y);
+	free_mat(X);
+	free_mat(Z);
+	//free_mat(diagMF1);
+	//free_mat(diagMF2);
+	//free_mat_gen(&MF1);
+	//free_mat_gen(&MF2);
+	//free_mat_gen(&I);
+	free_mat_gen(&AF);
+	free_mat_gen(&CF);
+	free_mat_gen(&OUT);
+	free_initial_point(&F0,&Q0,&V0);
+	free_compleib(&A, &B1, &B, &C1, &C, &D11, &D12, &D21);
+	printf("END");
+  	Cblacs_gridexit(scapack.ic);
+	MPI_Finalize();
+}
+

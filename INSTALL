@@ -1,0 +1,108 @@
+ 
+PCSDP 1.0 distributed memory SDP solver installation manual
+
+[Copyright (C) 2007  PCSDP Project]
+
+  This file explains how to install the the distributed
+  memory SDP splver PCSDP 1.0.
+  If you have any problems with installation process, please
+  send us an e-mail ( i.d.ivanov_at_ewi.tudelft.nl ).
+
+  In this manual we assume that:
+
+  1. You have BLAS, LAPACK libraries installed already.
+  
+  2. You have also installed BLACS and ScaLAPACK libraries from
+      http://www.netlib.org/blacs/
+      and 
+      http://www.netlib.org/scalapack/ 
+      respectively.
+  
+  3. You have MPI installed and configured on your cluster
+   
+  4. You have a knowledge of how to compile and 
+     use the MPICH program.
+
+In this manual, we also assume that your operating 
+system is "Linux" such as "Red Hat". PCSDP should work on 
+other Unix-like operating systems as well.
+
+The line whose starts with the character '$' 
+indicates a command you should execute.
+
+  We have tested the installation on a "Red Hat EL2" and "Scientific Linux"
+with "mpich-1.2.6"  and "mpich-1.2.7", respectively.
+
+-------------------------------------------------------------
+I. Instalation of PCSDP
+-------------------------------------------------------------
+
+1. Pre-instalation procedures
+
+We assume that you downloaded the package pcsdp1.0gplR1.tar.gz,
+into directory with name $SOME_DIR and you executed:
+
+$ tar xzvf pcsdp1.0gplR1.tar.gz
+$ cd pcsdp1.0gplR1/
+
+
+2. Go to your ScaLAPACK source directory, say $(PATH_TO_SCALAPAK),
+and copy all header files from $(PATH_TO_SCALAPACK)/PBLAS/SRC/
+into the /include directory of PCSDP. For example:
+
+$ cp $(PATH_TO_SCALAPACK)/PBLAS/SRC/*.h $(SOME_DIR)/pcsdp1.0gplR1/include/
+
+The following 5 files have to be copied: PBblacs.h, PBblas.h, 
+PBpblas.h, PBtools.h, pblas.h; 
+
+3. Customize the Makefiles
+
+$ cd $(SOME_DIR)/pcsdp1.0gplR1/lib
+
+ - Edit the Makefile
+ 
+   line   4  :: CC=mpicc
+   line   8  :: CFLAGS= -O3 -I../include 
+       
+   In case you compile  with 64bit C compiler use -DBIT64, so:
+       line  8  :: CFLAGS= -O3 -I../include -DBIT64
+
+$ cd ../solver
+
+ - Edit the Makefile
+   line   4  :: CC=mpicc
+   line   5  :: F77=mpif77
+
+   If mpich C and FORTRAN compile wrappers are different
+   than 'mpicc' and 'mpif77', then change them with the correct
+   ones above.
+
+   line  17  :: CFLAGS= -O3 -I../include 
+
+   In case you compile  with 64bit C compiler use -DBIT64, so:
+       line  17  :: CFLAGS= -O3 -I../include -DBIT64
+       
+   The following FORTRAN flags should prevent double underscore in 
+   function names when linking to algebra libraries.           
+       
+   line 25 :: FFLAGS= -fno-second-underscore
+  
+   If the compilation does not go smoothly, its a good idea to link
+   also against the following libraries:
+       line  45  ::  LIBLM=  -lm  -lg2c
+
+$ cd ..
+$ make clean
+$ make
+$ cd solver/
+
+After e successful build process, the executable pcsdp is in 
+directory /solver. To start PCSDP on your cluster you need to use the available
+tools as "prun" or alternatively if you have a "SGE" queueing 
+system you can use a 'sge' script. For more details on how to
+use PCSDP we refer to the user's manual in the doc directory. 
+ 
+We suggest also that you check the results for the SDP problems
+in the /testprob subdirectory of /solver to be sure that the
+processes are running.
+

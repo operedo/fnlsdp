@@ -1,0 +1,14 @@
+llego aca? (antes de gridinit)
+ictxt: 0,1,1,0,0
+llego aca? (antes de numroc)
+LDA=10974llego aca? (antes de pdelset)
+llego aca? (antes del primer pdsyevx)
+paso cblas_barrier?
+llego aca? (despues del primer pdsyevx
+)llego aca? (antes del segundo pdsyevx
+)e1=12960615797.743837
+lambda1=12960615797.743837
+Elements time: 0.000000 
+Factor time: 0.000000 
+Other time: 850.734038 
+Total time: 850.734038 

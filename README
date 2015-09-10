@@ -1,0 +1,25 @@
+Copyright 1997-2005, Brian Borchers.  This copy of CSDP 5.0 is made
+available under the GNU Public License.  See gpl.txt for
+the details of the GPL.
+
+Modified by Ivan Ivanov.  This copy of PCSDP 1.0 is made
+available under the GNU Public License.  See gpl.txt for
+the details of the GPL.
+
+This file includes source for a C code for SDP that uses BLAS,
+LAPACK, MPI, BLACS and ScaLAPACK subroutines. The directories are as follows:
+
+  doc                  documentation.
+
+  lib                  C source for libsdp.a.
+
+  solver               C source for a program that reads in problems in
+                       SDPA sparse format and solves them.  The subdirectory
+                       testprob contains a test problem.  
+
+
+ 
+See the User's Guide in the doc directory for instructions.
+
+
+

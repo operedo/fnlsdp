@@ -1,0 +1,9 @@
+compute-1-13
+compute-1-4
+compute-1-5 *lento
+compute-1-6
+compute-1-7
+compute-1-8 *lento
+compute-1-11
+compute-1-13
+
